@@ -128,54 +128,39 @@ State move(State s, Option o)
     int d_row = 0;
     int d_col = 0;
 
-    for (int i = 0; i < s.rows; i++)
+    // Buscar al agente en el tablero
+    bool found = false;
+    for (int i = 0; i < s.rows && !found; i++)
     {
-        for (int j = 0; j < s.columns; j++)
+        for (int j = 0; j < s.columns && !found; j++)
         {
             if (s.grid[i][j] == 'A')
             {
                 actual_row = i;
                 actual_col = j;
                 is_on_meta = false;
-                break;
+                found = true;
             }
             else if (s.grid[i][j] == 'Y')
             {
                 actual_row = i;
                 actual_col = j;
                 is_on_meta = true;
-                break;
+                found = true;
             }
         }
     }
 
+    bool prev_on_meta = is_on_meta;
+
+    // Determinar la dirección del movimiento
     switch (o) {
-    // UP
-    case MOVE_UP:
-        d_row = -1;
-        break;
-
-    // RIGHT
-    case MOVE_RIGHT:
-        d_col = 1;
-        break;
-
-    // DOWN
-    case MOVE_DOWN:
-        d_row = 1;
-        break;
-
-    // LEFT
-    case MOVE_LEFT:
-        d_col = -1;
-        break;
-
-    case SHOW_BEST_MOVE:
-        break;
-
-    case QUIT_GAME:
-        
-        break;
+        case MOVE_UP:    d_row = -1; break;
+        case MOVE_RIGHT: d_col = 1;  break;
+        case MOVE_DOWN:  d_row = 1;  break;
+        case MOVE_LEFT:  d_col = -1; break;
+        case SHOW_BEST_MOVE: break;
+        case QUIT_GAME:      break;
     }
 
     // calcular siguiente posicion
@@ -187,12 +172,14 @@ State move(State s, Option o)
 
     char next_cell = s.grid[next_row][next_col];
 
-
+    // Si hay pared, no mover
     if(next_cell == '#'){
         return s;
-    } else if(next_cell == '.' || next_cell == 'G'){
-            // restaurar la casilla anterior
-        if (is_on_meta) {
+    } 
+    // Movimiento simple del agente a espacio vacío o meta
+    else if(next_cell == '.' || next_cell == 'G'){
+        // restaurar la casilla anterior
+        if (prev_on_meta) {
             s.grid[actual_row][actual_col] = 'G';
         } else {
             s.grid[actual_row][actual_col] = '.';
@@ -204,8 +191,14 @@ State move(State s, Option o)
         } else {
             s.grid[next_row][next_col] = 'A';   
         }
-    return s;
-    } else if(next_cell == 'B' || next_cell == 'X'){
+
+        return s;
+    } 
+    // Movimiento de caja
+    else if(next_cell == 'B' || next_cell == 'X'){
+        // Guardar si la caja estaba sobre una meta ANTES de calcular nada
+        bool box_on_meta = (next_cell == 'X');
+        
         //calcular posicion de la caja
         int box_next_row = next_row + d_row;
         int box_next_col = next_col + d_col;
@@ -221,27 +214,25 @@ State move(State s, Option o)
             return s;
         }
 
-        // mover caja
-        if(box_next_cell == '.' || box_next_cell == 'G'){
-            if (box_next_cell == 'G') {
-                s.grid[box_next_row][box_next_col] = 'X';  // caja sobre meta
-            } else {
-                 s.grid[box_next_row][box_next_col] = 'B';  // caja normal
-            }
-        }
-
-        if (next_cell == 'X') {
-            s.grid[next_row][next_col] = 'Y';  // agente sobre meta
-            is_on_meta = true;
-        } else {
-            s.grid[next_row][next_col] = 'A';
-            is_on_meta = false;
-        }
-
-        if (is_on_meta) {
+        // Restaurar la casilla anterior del agente PRIMERO
+        if (prev_on_meta) {
             s.grid[actual_row][actual_col] = 'G';
         } else {
             s.grid[actual_row][actual_col] = '.';
+        }
+
+        // Mover agente a donde estaba la caja
+        if (box_on_meta) {
+            s.grid[next_row][next_col] = 'Y';  // agente sobre meta
+        } else {
+            s.grid[next_row][next_col] = 'A';  // agente normal
+        }
+
+        // Mover caja a su nueva posición
+        if(box_next_cell == 'G'){
+            s.grid[box_next_row][box_next_col] = 'X';  // caja sobre meta
+        } else {
+            s.grid[box_next_row][box_next_col] = 'B';  // caja normal
         }
 
         return s;
